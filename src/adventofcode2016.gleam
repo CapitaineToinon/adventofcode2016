@@ -4,6 +4,7 @@ import day02
 import day03
 import day04
 import day05
+import day06
 import gleam/dict
 import gleam/int
 import gleam/io
@@ -27,6 +28,7 @@ fn execute_day() -> Result(Nil, String) {
       #(3, day03.main),
       #(4, day04.main),
       #(5, day05.main),
+      #(6, day06.main),
     ])
 
   use arg <- result.try(get_argument())
