@@ -12,7 +12,7 @@ type Position =
   #(Int, Int)
 
 type Node {
-  Node(position: Position, score: Int, steps: Int)
+  Node(position: Position, steps: Int)
 }
 
 fn distance(a: Position, b: Position) -> Int {
@@ -63,23 +63,9 @@ fn is_space(pos: Position, favorite: Int) -> Bool {
 
 fn next_positions(position: Position) -> List(Position) {
   let #(x, y) = position
+
   [#(x, y + 1), #(x + 1, y), #(x, y - 1), #(x - 1, y)]
-}
-
-fn add_cache(cache: Dict(Position, Int), node: Node) -> Dict(Position, Int) {
-  case cache |> dict.get(node.position) {
-    Ok(steps) if steps > node.steps ->
-      cache |> dict.insert(node.position, node.steps)
-    Error(_) -> cache |> dict.insert(node.position, node.steps)
-    _ -> cache
-  }
-}
-
-fn should_visit(cache: Dict(Position, Int), node: Node) -> Bool {
-  case cache |> dict.get(node.position) {
-    Ok(steps) -> steps > node.steps
-    Error(_) -> True
-  }
+  |> list.filter(is_inside)
 }
 
 fn solve(
@@ -95,20 +81,23 @@ fn solve(
     |> result.replace_error("the queue is empty"),
   )
 
-  let cache = cache |> add_cache(cur)
-
-  cur.position
-  |> next_positions
-  |> list.map(fn(pos) {
-    let steps = cur.steps + 1
-    let score = steps + distance(pos, target)
-    Node(pos, score, steps)
+  use <- bool.lazy_guard(dict.has_key(cache, cur.position), fn() {
+    solve(queue, favorite, target, cache)
   })
-  |> list.filter(fn(node) { is_inside(node.position) })
-  |> list.filter(fn(node) { is_space(node.position, favorite) })
-  |> list.filter(fn(node) { should_visit(cache, node) })
-  |> list.fold(queue, fn(queue, node) { heap.insert(queue, node) })
-  |> solve(favorite, target, cache)
+
+  let cache = cache |> dict.insert(cur.position, cur.steps)
+
+  use <- bool.guard(cur.position == target, Ok(cache))
+
+  let queue =
+    cur.position
+    |> next_positions
+    |> list.filter(is_inside)
+    |> list.filter(is_space(_, favorite))
+    |> list.map(fn(pos) { Node(pos, cur.steps + 1) })
+    |> list.fold(queue, fn(queue, node) { heap.insert(queue, node) })
+
+  solve(queue, favorite, target, cache)
 }
 
 fn part_1(cache: Dict(Position, Int), target: Position) -> Result(Int, String) {
@@ -120,15 +109,12 @@ fn part_1(cache: Dict(Position, Int), target: Position) -> Result(Int, String) {
 fn part_2(cache: Dict(Position, Int), steps: Int) -> Int {
   cache
   |> dict.to_list
-  |> list.filter(fn(element) {
-    let #(_, s) = element
-    s <= steps
-  })
+  |> list.filter(fn(node) { node.1 <= steps })
   |> list.length
 }
 
 fn cmp(a: Node, b: Node) {
-  int.compare(a.score, b.score)
+  int.compare(a.steps, b.steps)
 }
 
 pub fn main(input: String) -> Result(Nil, String) {
@@ -143,7 +129,7 @@ pub fn main(input: String) -> Result(Nil, String) {
 
   use positions <- try(
     heap.new(cmp)
-    |> heap.insert(Node(#(1, 1), 0, 0))
+    |> heap.insert(Node(#(1, 1), 0))
     |> solve(favorite, target, dict.new()),
   )
 
