@@ -4,13 +4,20 @@ import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
-import gleam/list.{Continue, Stop}
+import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result.{try}
 import gleam/string
 
-type Cache =
-  Dict(#(String, Int, Int), Option(String))
+type Cache {
+  Cache(
+    hashes: Dict(Int, String),
+    windows: Dict(#(String, Int), Option(String)),
+  )
+}
+
+fn new_cache() {
+  Cache(dict.new(), dict.new())
+}
 
 fn md5(data: String) -> String {
   crypto.Md5
@@ -35,11 +42,17 @@ fn get_char_repeat(
   cache: Cache,
   hash: fn(String, Int) -> String,
 ) -> #(Cache, Option(String)) {
-  case cache |> dict.get(#(input, i, n)) {
-    Ok(a) -> #(cache, a)
+  let #(hashes, hashed) = case dict.get(cache.hashes, i) {
+    Ok(hashed) -> #(cache.hashes, hashed)
     Error(_) -> {
-      let hashed = hash(input, i)
+      let h = hash(input, i)
+      #(dict.insert(cache.hashes, i, h), h)
+    }
+  }
 
+  let #(windows, option) = case dict.get(cache.windows, #(hashed, n)) {
+    Ok(option) -> #(cache.windows, option)
+    Error(_) -> {
       let option = case
         hashed
         |> string.split("")
@@ -55,10 +68,12 @@ fn get_char_repeat(
         Error(_) -> None
       }
 
-      let cache = cache |> dict.insert(#(input, i, n), option)
-      #(cache, option)
+      #(dict.insert(cache.windows, #(hashed, n), option), option)
     }
   }
+
+  let cache = Cache(hashes, windows)
+  #(cache, option)
 }
 
 fn get_next_char_repeat(
@@ -112,7 +127,13 @@ fn solve(
 }
 
 pub fn main(input: String) -> Result(Nil, String) {
-  solve(input |> string.trim, 1, 64, dict.new(), hash) |> echo
-  solve(input |> string.trim, 1, 64, dict.new(), hash_2016) |> echo
+  solve(input |> string.trim, 1, 64, new_cache(), hash)
+  |> int.to_string
+  |> io.println
+
+  solve(input |> string.trim, 1, 64, new_cache(), hash_2016)
+  |> int.to_string
+  |> io.println
+
   Ok(Nil)
 }
