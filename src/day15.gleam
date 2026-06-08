@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/int
 import gleam/io
 import gleam/list
@@ -58,20 +59,44 @@ fn rotate(disc: Disc, by: Int) -> Result(Disc, String) {
   Ok(Disc(..disc, position: position))
 }
 
-fn solve(discs: List(Disc), time: Int) -> Result(Int, String) {
+fn is_aligned(disc: Disc) -> Bool {
+  disc.position == 0
+}
+
+fn compute_start(discs: List(Disc)) -> Result(#(Int, Int), String) {
+  use #(size, position, i) <- try(
+    discs
+    |> list.index_map(fn(disc, i) { #(disc.n, disc.position, i) })
+    |> list.max(fn(a, b) { int.compare(a.0, b.0) })
+    |> result.replace_error("list is empty"),
+  )
+
+  use start <- try(
+    size
+    |> int.subtract(position)
+    |> int.subtract(i)
+    |> int.subtract(1)
+    |> int.modulo(size)
+    |> result.replace_error("failed to compute start"),
+  )
+
+  Ok(#(start, size))
+}
+
+fn solve(discs: List(Disc)) -> Result(Int, String) {
+  use #(start, by) <- try(discs |> compute_start)
+  discs |> next(start, by)
+}
+
+fn next(discs: List(Disc), start: Int, by: Int) -> Result(Int, String) {
   use rotated <- try(
     discs
-    |> list.index_map(fn(disc, i) { rotate(disc, time + i + 1) })
+    |> list.index_map(fn(disc, i) { rotate(disc, start + i + 1) })
     |> result.all,
   )
 
-  case
-    rotated
-    |> list.all(fn(disc) { disc.position == 0 })
-  {
-    True -> Ok(time)
-    False -> solve(discs, time + 1)
-  }
+  use <- bool.guard(rotated |> list.all(is_aligned), Ok(start))
+  next(discs, start + by, by)
 }
 
 fn append(list: List(a), elem: a) -> List(a) {
@@ -89,13 +114,13 @@ pub fn main(input: String) -> Result(Nil, String) {
     |> parse_lines,
   )
 
-  use p1 <- try(discs |> solve(0))
+  use p1 <- try(discs |> solve)
 
   p1
   |> int.to_string
   |> io.println
 
-  use p2 <- try(discs |> append(Disc(11, 0)) |> solve(0))
+  use p2 <- try(discs |> append(Disc(11, 0)) |> solve)
 
   p2
   |> int.to_string
