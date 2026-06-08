@@ -1,4 +1,3 @@
-import gleam/bit_array
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
@@ -13,20 +12,6 @@ type Position =
 
 type Node {
   Node(position: Position, steps: Int)
-}
-
-fn distance(a: Position, b: Position) -> Int {
-  let #(x1, y1) = a
-  let #(x2, y2) = b
-
-  let diff = fn(a, b) {
-    int.subtract(a, b)
-    |> int.absolute_value
-  }
-
-  0
-  |> int.add(diff(x1, x2))
-  |> int.add(diff(y1, y2))
 }
 
 fn count_bits(value: Int) -> Int {
