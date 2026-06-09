@@ -16,6 +16,8 @@ import day14
 import day15
 import day16
 import day17
+import day18
+import gleam/bool
 import gleam/dict
 import gleam/int
 import gleam/io
@@ -29,6 +31,17 @@ fn get_argument() -> Result(String, String) {
     [string] -> Ok(string)
     _ -> Error("argument not found")
   }
+}
+
+fn time(cb: fn() -> b) -> b {
+  let now = timestamp.system_time()
+  let result = cb()
+  let then = timestamp.system_time()
+  let diff = timestamp.difference(now, then)
+  let ms = duration.to_milliseconds(diff)
+
+  io.println("Executed in " <> int.to_string(ms) <> " ms")
+  result
 }
 
 fn execute_day() -> Result(Nil, String) {
@@ -51,6 +64,7 @@ fn execute_day() -> Result(Nil, String) {
       #(15, day15.main),
       #(16, day16.main),
       #(17, day17.main),
+      #(18, day18.main),
     ])
 
   use arg <- result.try(get_argument())
@@ -72,15 +86,8 @@ fn execute_day() -> Result(Nil, String) {
     |> result.replace_error("failed to open input file for day " <> arg),
   )
 
-  let now = timestamp.system_time()
-  let result = day(file)
-  let then = timestamp.system_time()
-  let diff = timestamp.difference(now, then)
-  let ms = duration.to_milliseconds(diff)
-
-  io.println("Executed in " <> int.to_string(ms) <> " ms")
-
-  result
+  use <- time
+  day(file)
 }
 
 pub fn main() -> Nil {
