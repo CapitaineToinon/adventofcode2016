@@ -81,30 +81,27 @@ fn solve(
   solution: Option(Solution),
   heap: heap.Heap(#(Int, Int, Int, String)),
 ) -> Option(Solution) {
-  case heap |> heap.pop_min {
-    Ok(#(heap, #(steps, x, y, path))) -> {
-      use <- bool.lazy_guard(#(x, y) == end, fn() {
-        Some(update_solution(solution, path, steps))
-        |> solve(input, end, _, heap)
-      })
+  use #(heap, #(steps, x, y, path)) <- heap.pop_guard(heap, solution)
 
-      get_directions(input <> path)
-      |> list.filter_map(fn(dir) {
-        let #(x, y) = move(x, y, dir)
+  use <- bool.lazy_guard(#(x, y) == end, fn() {
+    Some(update_solution(solution, path, steps))
+    |> solve(input, end, _, heap)
+  })
 
-        case is_bounded(#(x, y), end) {
-          True -> Ok(#(x, y, dir))
-          False -> Error("out of bounds")
-        }
-      })
-      |> list.fold(heap, fn(acc, pos) {
-        let #(x, y, dir) = pos
-        acc |> heap.insert(#(steps + 1, x, y, add_path(path, dir)))
-      })
-      |> solve(input, end, solution, _)
+  get_directions(input <> path)
+  |> list.filter_map(fn(dir) {
+    let #(x, y) = move(x, y, dir)
+
+    case is_bounded(#(x, y), end) {
+      True -> Ok(#(x, y, dir))
+      False -> Error("out of bounds")
     }
-    Error(_) -> solution
-  }
+  })
+  |> list.fold(heap, fn(acc, pos) {
+    let #(x, y, dir) = pos
+    acc |> heap.insert(#(steps + 1, x, y, add_path(path, dir)))
+  })
+  |> solve(input, end, solution, _)
 }
 
 fn cmp(a: #(Int, Int, Int, String), b: #(Int, Int, Int, String)) {

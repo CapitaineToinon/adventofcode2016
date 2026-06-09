@@ -236,7 +236,7 @@ fn solve(
   cache: Set(State),
 ) -> Result(Int, String) {
   use #(heap, head) <- try(
-    heap.pop_min(heap)
+    heap.pop(heap)
     |> replace_error("failed to find a solution"),
   )
 

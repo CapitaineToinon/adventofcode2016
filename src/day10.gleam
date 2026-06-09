@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
@@ -192,22 +193,19 @@ fn exhaust_bots(
   state: State,
   compared_by: ComparedBy,
 ) -> Result(#(State, ComparedBy), String) {
-  case state.bots |> dict.is_empty {
-    True -> Ok(#(state, compared_by))
-    False -> {
-      use #(state, compared_by) <- result.try(
-        state.bots
-        |> dict.to_list
-        |> list.fold(Ok(#(state, compared_by)), fn(acc, bot) {
-          let #(id, values) = bot
-          use #(state, compared_by) <- result.try(acc)
-          exhaust_bot(state, compared_by, id, values)
-        }),
-      )
+  use <- bool.guard(dict.is_empty(state.bots), Ok(#(state, compared_by)))
 
-      exhaust_bots(state, compared_by)
-    }
-  }
+  use #(state, compared_by) <- result.try(
+    state.bots
+    |> dict.to_list
+    |> list.fold(Ok(#(state, compared_by)), fn(acc, bot) {
+      let #(id, values) = bot
+      use #(state, compared_by) <- result.try(acc)
+      exhaust_bot(state, compared_by, id, values)
+    }),
+  )
+
+  exhaust_bots(state, compared_by)
 }
 
 pub fn main(input: String) -> Result(Nil, String) {

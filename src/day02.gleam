@@ -51,17 +51,14 @@ fn get_k2() -> Keypad {
 }
 
 fn get_key(value: String, keypad: Keypad) -> Result(Position, String) {
-  use #(position, _) <- result.try(
-    keypad
-    |> dict.to_list
-    |> list.find(fn(el) {
-      let #(_, v) = el
-      v == value
-    })
-    |> result.replace_error("failed to find value in keypad: " <> value),
-  )
-
-  Ok(position)
+  keypad
+  |> dict.to_list
+  |> list.find(fn(el) {
+    let #(_, v) = el
+    v == value
+  })
+  |> result.map(fn(el) { el.0 })
+  |> result.replace_error("failed to find value in keypad: " <> value)
 }
 
 fn get_value(key: Position, keypad: Keypad) -> Result(String, String) {

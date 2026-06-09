@@ -62,7 +62,7 @@ fn solve(
   use <- bool.guard(heap.is_empty(queue), Ok(cache))
 
   use #(queue, cur) <- try(
-    heap.pop_min(queue)
+    heap.pop(queue)
     |> result.replace_error("the queue is empty"),
   )
 

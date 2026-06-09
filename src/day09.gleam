@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
@@ -69,77 +70,70 @@ fn decompress(
 ) -> Result(#(Int, Dict(String, Int)), String) {
   let input_len = input |> string.length
 
-  case position < input_len {
-    False -> {
-      // When the string is empty, meaning we reached the end
-      // of the input
-      Ok(#(0, cache))
-    }
-    True -> {
-      let head = input |> string.slice(position, 1)
+  // When the string is empty, meaning we reached the end
+  // of the input, return
+  use <- bool.guard(position >= input_len, Ok(#(0, cache)))
 
-      case head {
-        "(" -> {
-          use #(n_characters, n_repeats, pattern_string_len) <- result.try(
-            get_pattern(input, position + 1),
-          )
+  let head = input |> string.slice(position, 1)
 
-          let string_to_repeat =
-            input
-            |> string.slice(position + pattern_string_len, n_characters)
+  use <- bool.lazy_guard(head != "(", fn() {
+    // We're currently not processing a pattern that needs
+    // to be repeated, therefore just advance by once character
+    // and keep going
+    use #(rest_len, cache) <- result.try(decompress(
+      input,
+      position + 1,
+      single_pass,
+      cache,
+    ))
 
-          use #(segment_len, cache) <- result.try(
-            case dict.get(cache, string_to_repeat) {
-              Ok(len) -> {
-                // cache hit means this specific pattern
-                // has already recurisvely be processed
-                Ok(#(len, cache))
-              }
-              Error(_) -> {
-                // If we wish to recurisvely decompress, call
-                // decompress again with the pattern that replaces
-                use #(len, cache) <- result.try(case single_pass {
-                  False -> decompress(string_to_repeat, 0, False, cache)
-                  _ -> Ok(#(n_characters, cache))
-                })
+    Ok(#(1 + rest_len, cache))
+  })
 
-                let cache = dict.insert(cache, string_to_repeat, len)
-                Ok(#(len, cache))
-              }
-            },
-          )
+  use #(n_characters, n_repeats, pattern_string_len) <- result.try(get_pattern(
+    input,
+    position + 1,
+  ))
 
-          let to_replace_len = pattern_string_len + n_characters
+  let string_to_repeat =
+    input
+    |> string.slice(position + pattern_string_len, n_characters)
 
-          // jump past the middle pattern we just computed and keep going
-          // with the rest of the input
-          use #(rest_len, cache) <- result.try(decompress(
-            input,
-            position + to_replace_len,
-            single_pass,
-            cache,
-          ))
-
-          // final length
-          let length = n_repeats * segment_len + rest_len
-          Ok(#(length, cache))
-        }
-        _ -> {
-          // We're currently not processing a pattern that needs
-          // to be repeated, therefore just advance by once character
-          // and keep going
-          use #(rest_len, cache) <- result.try(decompress(
-            input,
-            position + 1,
-            single_pass,
-            cache,
-          ))
-
-          Ok(#(1 + rest_len, cache))
-        }
+  use #(segment_len, cache) <- result.try(
+    case dict.get(cache, string_to_repeat) {
+      Ok(len) -> {
+        // cache hit means this specific pattern
+        // has already recurisvely be processed
+        Ok(#(len, cache))
       }
-    }
-  }
+      Error(_) -> {
+        // If we wish to recurisvely decompress, call
+        // decompress again with the pattern that replaces
+        use #(len, cache) <- result.try(case single_pass {
+          False -> decompress(string_to_repeat, 0, False, cache)
+          _ -> Ok(#(n_characters, cache))
+        })
+
+        let cache = dict.insert(cache, string_to_repeat, len)
+        Ok(#(len, cache))
+      }
+    },
+  )
+
+  let to_replace_len = pattern_string_len + n_characters
+
+  // jump past the middle pattern we just computed and keep going
+  // with the rest of the input
+  use #(rest_len, cache) <- result.try(decompress(
+    input,
+    position + to_replace_len,
+    single_pass,
+    cache,
+  ))
+
+  // final length
+  let length = n_repeats * segment_len + rest_len
+  Ok(#(length, cache))
 }
 
 fn v1(input: String) -> Result(Int, String) {
