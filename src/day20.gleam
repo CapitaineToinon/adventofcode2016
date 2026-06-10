@@ -89,13 +89,10 @@ fn find_lowest(ranges: Ranges) -> Result(Int, String) {
 /// between 0-8.
 fn count_allowed(ranges: Ranges) -> Int {
   ranges
-  |> list.window(2)
+  |> list.window_by_2
   |> list.fold(0, fn(acc, win) {
-    acc
-    + case win {
-      [a, b] -> b.from - a.to - 1
-      _ -> 0
-    }
+    let #(a, b) = win
+    acc + b.from - a.to - 1
   })
 }
 
