@@ -81,10 +81,12 @@ fn find_lowest(ranges: Ranges) -> Result(Int, String) {
 
 /// This code assumes the min and max values are
 /// in the ranges, which is the case for the input
-/// but not for the example input. For example, the
-/// example inputs only has ranges 0-2, 4-8 but asks
-/// how many are valid between 0-10. However, this
-/// code would only count valid items between 0-8.
+/// but not for the example input.
+///
+/// For example, the example inputs only has ranges
+/// 0-2, 4-8 but asks how many are valid between 0-10.
+/// However, this code would only count valid items
+/// between 0-8.
 fn count_allowed(ranges: Ranges) -> Int {
   ranges
   |> list.window(2)
@@ -100,10 +102,7 @@ fn count_allowed(ranges: Ranges) -> Int {
 pub fn main(input: String) -> Result(Nil, String) {
   use ranges <- try(input |> parse_lines)
 
-  use p1 <- try(
-    ranges
-    |> find_lowest,
-  )
+  use p1 <- try(ranges |> find_lowest)
 
   p1
   |> int.to_string
