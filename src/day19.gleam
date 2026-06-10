@@ -1,34 +1,56 @@
-import gleam/bool
-import gleam/dict.{type Dict}
 import gleam/int
 import gleam/result
+import gleam/string
 
-fn steal(elf: Int, elfs: Dict(Int, Int), n) -> #(Int, Int) {
-  case elfs |> dict.get(elf) |> result.unwrap(1) {
-    0 -> steal({ elf + 1 } % n, elfs, n)
-    count -> #(elf, count)
+fn is_bit_set(n: Int, bit: Int) {
+  case n |> int.bitwise_shift_right(bit) |> int.bitwise_and(1) {
+    1 -> True
+    _ -> False
   }
 }
 
-fn part_1(elf: Int, elfs: Dict(Int, Int), n: Int) -> Int {
-  let current = elfs |> dict.get(elf) |> result.unwrap(1)
-
-  use <- bool.guard(current == n, elf)
-
-  use <- bool.lazy_guard(current == 0, fn() { part_1({ elf + 1 } % n, elfs, n) })
-
-  let #(from, count) = steal({ elf + 1 } % n, elfs, n)
-
-  let elfs =
-    elfs
-    |> dict.insert(from, 0)
-    |> dict.insert(elf, current + count)
-
-  part_1({ elf + 1 } % n, elfs, n)
+fn get_higest_bit(n: Int, size: Int) -> Int {
+  case is_bit_set(n, size - 1) {
+    True -> size - 1
+    False -> get_higest_bit(n, size - 1)
+  }
 }
 
-pub fn main(_input: String) -> Result(Nil, String) {
-  part_1(1, dict.new(), 3_018_458) |> echo
+/// implementation of https://en.wikipedia.org/wiki/Josephus_problem
+fn josephus(n: Int) -> Int {
+  let l = n - { 1 |> int.bitwise_shift_left(get_higest_bit(n, 32)) }
+  { 2 * l } + 1
+}
+
+fn largest_power_of_3(n: Int) -> Int {
+  case n / 3 {
+    0 -> 1
+    m -> 3 * largest_power_of_3(m)
+  }
+}
+
+fn part_2(n: Int) -> Int {
+  let p = largest_power_of_3(n)
+  case n == p {
+    True -> n
+    False ->
+      case n <= 2 * p {
+        True -> n - p
+        False -> 2 * n - 3 * p
+      }
+  }
+}
+
+pub fn main(input: String) -> Result(Nil, String) {
+  use input <- result.try(
+    input
+    |> string.trim
+    |> int.parse
+    |> result.replace_error("failed to parse input"),
+  )
+
+  echo josephus(input)
+  echo part_2(input)
 
   Ok(Nil)
 }

@@ -1,11 +1,14 @@
+//// Pairing implementation inspired by:
+//// https://en.wikipedia.org/wiki/Pairing_heap
+
 import gleam/order.{type Order, Lt}
 
-pub type Tree(a) {
+pub opaque type Tree(a) {
   Empty
   Tree(elem: a, subheaps: List(Tree(a)))
 }
 
-pub type Heap(a) {
+pub opaque type Heap(a) {
   Heap(root: Tree(a), cmp: fn(a, a) -> Order)
 }
 
