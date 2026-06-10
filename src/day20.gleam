@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/order.{Eq}
 import gleam/result.{try}
@@ -8,15 +9,8 @@ type Range {
   Range(from: Int, to: Int)
 }
 
-type Ranges(state) {
-  Ranges(items: List(Range))
-}
-
-type Unsorted
-
-type Sorted
-
-type SortedFolded
+type Ranges =
+  List(Range)
 
 fn parse_int(int: String) -> Result(Int, String) {
   int
@@ -38,59 +32,48 @@ fn parse_line(input: String) -> Result(Range, String) {
   Ok(Range(from, to))
 }
 
-fn parse_lines(input: String) -> Result(Ranges(Unsorted), String) {
+fn parse_lines(input: String) -> Result(Ranges, String) {
   input
   |> string.trim
   |> string.split("\n")
   |> list.map(parse_line)
   |> result.all
-  |> result.map(Ranges)
+  |> result.map(fn(ranges) {
+    ranges
+    |> sort_ranges
+    |> fold_ranges(list.new())
+  })
 }
 
-fn sort_ranges(ranges: Ranges(Unsorted)) -> Ranges(Sorted) {
-  ranges.items
+fn sort_ranges(ranges: Ranges) -> Ranges {
+  ranges
   |> list.sort(fn(a, b) {
     case int.compare(a.from, b.from) {
       Eq -> int.compare(a.to, b.to)
       o -> o
     }
   })
-  |> Ranges
 }
 
-fn fold_ranges(ranges: Ranges(Sorted)) -> Ranges(SortedFolded) {
-  let folded = case ranges.items {
-    // if ranges are empty, then it's already folded
-    [] -> ranges.items
-    [a, ..rest] -> {
+fn fold_ranges(ranges: Ranges, output: Ranges) -> Ranges {
+  case ranges {
+    [a, b, ..rest] if b.from - 1 <= a.to -> {
       rest
-      |> list.fold([a], fn(acc, current) {
-        case acc {
-          [last, ..rest] -> {
-            // ranges overlap so merges them into 
-            // a single range
-            case current.from <= last.to + 1 {
-              True -> {
-                let next = Range(last.from, int.max(last.to, current.to))
-                rest |> list.prepend(next)
-              }
-              False -> acc |> list.prepend(current)
-            }
-          }
-          // ranges don't overlap, just append
-          // to keep the order as is
-          _ -> acc |> list.prepend(current)
-        }
-      })
-      |> list.reverse
+      |> list.prepend(Range(a.from, int.max(a.to, b.to)))
+      |> fold_ranges(output)
     }
+    [a, ..rest] ->
+      output
+      |> list.prepend(a)
+      |> fold_ranges(rest, _)
+    [] ->
+      output
+      |> list.reverse
   }
-
-  Ranges(folded)
 }
 
-fn find_lowest(ranges: Ranges(SortedFolded)) -> Result(Int, String) {
-  case ranges.items {
+fn find_lowest(ranges: Ranges) -> Result(Int, String) {
+  case ranges {
     [lowest, ..] -> Ok(lowest.to + 1)
     _ -> Error("ranges cannot be empty")
   }
@@ -98,9 +81,12 @@ fn find_lowest(ranges: Ranges(SortedFolded)) -> Result(Int, String) {
 
 /// This code assumes the min and max values are
 /// in the ranges, which is the case for the input
-/// but not for the example input
-fn count_allowed(ranges: Ranges(SortedFolded)) -> Int {
-  ranges.items
+/// but not for the example input. For example, the
+/// example inputs only has ranges 0-2, 4-8 but asks
+/// how many are valid between 0-10. However, this
+/// code would only count valid items between 0-8.
+fn count_allowed(ranges: Ranges) -> Int {
+  ranges
   |> list.window(2)
   |> list.fold(0, fn(acc, win) {
     acc
@@ -114,18 +100,19 @@ fn count_allowed(ranges: Ranges(SortedFolded)) -> Int {
 pub fn main(input: String) -> Result(Nil, String) {
   use ranges <- try(input |> parse_lines)
 
-  let ranges =
+  use p1 <- try(
     ranges
-    |> sort_ranges
-    |> fold_ranges
+    |> find_lowest,
+  )
 
-  ranges
-  |> find_lowest
-  |> echo
+  p1
+  |> int.to_string
+  |> io.println
 
   ranges
   |> count_allowed
-  |> echo
+  |> int.to_string
+  |> io.println
 
   Ok(Nil)
 }
