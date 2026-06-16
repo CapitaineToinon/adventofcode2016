@@ -24,13 +24,20 @@ import day22
 import day23
 import day24
 import day25
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
-import gleam/result
+import gleam/result.{try}
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import simplifile
+
+type Day =
+  fn(String) -> Result(Nil, String)
+
+type Days =
+  Dict(Int, Day)
 
 fn get_argument() -> Result(String, String) {
   case argv.load().arguments {
@@ -48,6 +55,30 @@ fn time(cb: fn() -> b) -> b {
 
   io.println("Executed in " <> int.to_string(ms) <> " ms")
   result
+}
+
+fn time_day(day: Day, input: String) {
+  use <- time
+  day(input)
+}
+
+fn do_day(days: Days, i: Int) {
+  let arg =
+    i
+    |> int.to_string
+    |> string.pad_start(2, "0")
+
+  use day <- try(
+    dict.get(days, i)
+    |> result.replace_error("day " <> arg <> " not found or implemented yet"),
+  )
+
+  use file <- try(
+    simplifile.read("./input/day" <> arg)
+    |> result.replace_error("input file for day " <> arg <> " not found"),
+  )
+
+  time_day(day, file)
 }
 
 fn execute_day() -> Result(Nil, String) {
@@ -87,20 +118,7 @@ fn execute_day() -> Result(Nil, String) {
     |> result.replace_error("argument " <> arg <> " is not a valid number"),
   )
 
-  use day <- result.try(
-    dict.get(days, i)
-    |> result.replace_error(
-      "day " <> arg <> " not found or not implemented yet",
-    ),
-  )
-
-  use file <- result.try(
-    simplifile.read("./input/day" <> arg)
-    |> result.replace_error("failed to open input file for day " <> arg),
-  )
-
-  use <- time
-  day(file)
+  do_day(days, i)
 }
 
 pub fn main() -> Nil {
